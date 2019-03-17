@@ -1,0 +1,26 @@
+{
+  "name": "yutub",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rahmatalhakam/yutub.git"
+  },
+  "author": "rahmat",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/rahmatalhakam/yutub/issues"
+  },
+  "homepage": "https://github.com/rahmatalhakam/yutub#readme",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "body-parser": "^1.18.3",
+    "express": "^4.16.4",
+    "jsonwebtoken": "^8.5.0",
+    "mongoose": "^5.4.19"
+  }
+}

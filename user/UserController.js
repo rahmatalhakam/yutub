@@ -3,6 +3,7 @@ var router = express.Router();
 var jwt = require("jsonwebtoken");
 var bcrypt = require("bcryptjs");
 var bodyParser = require("body-parser");
+
 router.use(bodyParser.urlencoded({ extended: true }));
 router.use(bodyParser.json());
 
@@ -10,7 +11,10 @@ var User = require("./User");
 var config = require("../config");
 var VerifyToken = require("../auth/VerifyToken");
 
+// create new user
 router.post("/", function(req, res) {
+  if (!req.body.name || !req.body.email || !req.body.password)
+    return res.status(400).send("Bad Request");
   var hashedPassword = bcrypt.hashSync(req.body.password, 8);
   User.create(
     {
@@ -32,7 +36,10 @@ router.post("/", function(req, res) {
   );
 });
 
+// login user
 router.post("/login", function(req, res) {
+  if (!req.body.email || !req.body.password)
+    return res.status(400).send("Bad Request");
   User.findOne({ email: req.body.email }, function(err, user) {
     if (err) return res.status(500).send("Error on the server.");
     if (!user) return res.status(404).send("No user found.");
@@ -51,13 +58,14 @@ router.post("/login", function(req, res) {
 
 // RETURNS ALL THE USERS IN THE DATABASE
 router.get("/all", function(req, res) {
-  User.find({}, { password: 0 }, function(err, users) {
+  User.find(req.query, { password: 0 }, function(err, users) {
     if (err)
       return res.status(500).send("There was a problem finding the users.");
     res.status(200).send(users);
   });
 });
 
+//get user by token
 router.get("/", VerifyToken, function(req, res, next) {
   User.findById(req.userId, { password: 0 }, function(err, user) {
     if (err)
@@ -69,6 +77,7 @@ router.get("/", VerifyToken, function(req, res, next) {
 
 // UPDATES A SINGLE USER IN THE DATABASE
 router.put("/", VerifyToken, function(req, res) {
+  req.body.updated_at = new Date().toISOString();
   User.findByIdAndUpdate(req.userId, req.body, { new: true }, function(
     err,
     user
@@ -80,11 +89,11 @@ router.put("/", VerifyToken, function(req, res) {
 });
 
 // DELETES A USER FROM THE DATABASE
-router.delete("/:id", function(req, res) {
-  User.findByIdAndRemove(req.params.id, function(err, user) {
+router.delete("/", VerifyToken, function(req, res) {
+  User.findByIdAndDelete(req.userId, function(err, user) {
     if (err)
       return res.status(500).send("There was a problem deleting the user.");
-    res.status(200).send("User " + user.name + " was deleted.");
+    res.status(200).send("User was deleted.");
   });
 });
 

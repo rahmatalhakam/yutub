@@ -14,6 +14,8 @@ const VideoSchema = new mongoose.Schema({
   },
   title: String,
   description: String,
+  thumbnail: String,
+  // html_resource: String,
   created_at: { type: Date, default: Date.now },
   updated_at: Date
 });

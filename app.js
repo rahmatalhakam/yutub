@@ -1,13 +1,15 @@
-var express = require("express");
-var app = express();
-var cors = require("cors");
-var db = require("./db");
+const express = require("express");
+const app = express();
+const cors = require("cors");
+const db = require("./db");
 app.use(cors());
-var UserController = require("./user/UserController");
+const UserController = require("./user/UserController");
 app.use("/users", UserController);
-var VideoController = require("./video/VideoController");
+const VideoController = require("./video/VideoController");
 app.use("/videos", VideoController);
+const CommentController = require("./comment/CommentController");
+app.use("/comments", CommentController);
 app.get("/", (req, res) => {
-  res.render("index");
+  res.send("yutub-api");
 });
 module.exports = app;

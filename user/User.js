@@ -1,12 +1,10 @@
 const mongoose = require("mongoose");
-const UserSchema = new mongoose.Schema({
+const Schema = mongoose.Schema;
+const UserSchema = Schema({
   name: { type: String, required: true },
-  email: { type: String, required: true, unique: true, lowercase: true },
+  email: { type: String, required: true, lowercase: true, unique: true },
   password: { type: String, required: true },
-  photo_profile: {
-    id_photo: String,
-    photo_url: String
-  },
+  photo_profile: { id_photo: String, photo_url: String },
   created_at: { type: Date, default: Date.now },
   updated_at: Date
 });

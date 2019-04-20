@@ -1,12 +1,10 @@
 const mongoose = require("mongoose");
-const CommentSchema = new mongoose.Schema({
-  id_video: {
-    type: String,
-    required: true
-  },
-  name: String,
+const Schema = mongoose.Schema;
+const CommentSchema = Schema({
   comment: String,
-  created_at: { type: Date, default: Date.now }
+  created_at: { type: Date, default: Date.now },
+  id_video: { type: Schema.Types.ObjectId, ref: "Video", required: true },
+  id_user: { type: Schema.Types.ObjectId, ref: "User", required: true }
 });
 mongoose.model("Comment", CommentSchema);
 

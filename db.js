@@ -1,4 +1,4 @@
 var mongoose = require("mongoose");
-mongoose.connect("mongodb://yutub:yutub12345@ds119258.mlab.com:19258/yutub", {
+mongoose.connect("mongodb://yutub:yutub1234@ds119164.mlab.com:19164/yutub", {
   useNewUrlParser: true
 });

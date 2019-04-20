@@ -8,9 +8,9 @@ router.use(bodyParser.json());
 
 const cloudinary = require("cloudinary");
 var Video = require("./Video");
+var Comment = require("../comment/Comment");
 var config = require("../config");
 var VerifyToken = require("../auth/VerifyToken");
-
 cloudinary.config({
   cloud_name: config.cloud_name,
   api_key: config.api_key,
@@ -21,21 +21,19 @@ const parser = multer({ dest: "storage/" });
 
 //create new video post by user
 router.post("/", [VerifyToken, parser.single("video")], (req, res) => {
-  if (!req.body.title || !req.body.description)
-    return res.status(400).send("Bad Request");
   const { title, description } = req.body;
-
+  if (!title || !description) return res.sendStatus(400);
   cloudinary.v2.uploader.upload(
     req.file.path,
     { resource_type: "video" },
     (error, result) => {
-      fs.unlink(req.file.path, function(err) {
+      fs.unlink(req.file.path, err => {
         if (err) throw err;
       });
       if (error) return res.status(500).send(error);
       const id_user = req.userId;
       const video_url = result.secure_url;
-      const id_video = result.public_id;
+      const id_cloudinary = result.public_id;
       // const html_resource = cloudinary.video(id_video, {
       //   controls: true,
       //   width: "100%",
@@ -45,7 +43,7 @@ router.post("/", [VerifyToken, parser.single("video")], (req, res) => {
       const thumbnail = video_url.replace(".mp4", ".jpg");
       Video.create(
         {
-          id_video,
+          id_cloudinary,
           id_user,
           video_url,
           title,
@@ -54,7 +52,7 @@ router.post("/", [VerifyToken, parser.single("video")], (req, res) => {
           thumbnail,
           updated_at: new Date().toISOString()
         },
-        function(err, user) {
+        (err, user) => {
           if (err)
             return res
               .status(500)
@@ -70,46 +68,60 @@ router.post("/", [VerifyToken, parser.single("video")], (req, res) => {
 
 //get all videos
 router.get("/all", (req, res) => {
-  const { id_video, title, description } = req.query;
-  Video.find(
-    {
+  const { id_cloudinary, title, description, id_user, _id } = req.query;
+  if (_id)
+    Video.findById(_id)
+      .populate("id_user", "name photo_profile")
+      .exec((err, videos) => {
+        if (err)
+          return res.status(500).send("There was a problem finding the video.");
+        res.status(200).send(videos);
+      });
+  else if (id_user)
+    Video.find({ id_user })
+      .populate("id_user", "name photo_profile")
+      .exec((err, videos) => {
+        if (err)
+          return res.status(500).send("There was a problem finding the video.");
+        res.status(200).send(videos);
+      });
+  else
+    Video.find({
       title: new RegExp(title, "i"),
       description: new RegExp(description, "i"),
-      id_video: new RegExp(id_video)
-    },
-    (err, videos) => {
-      if (err)
-        return res.status(500).send("There was a problem finding the videos.");
-      res.status(200).send(videos);
-    }
-  );
+      id_cloudinary: new RegExp(id_cloudinary)
+    })
+      .populate("id_user", "name photo_profile")
+      .exec((err, videos) => {
+        if (err)
+          return res.status(500).send("There was a problem finding the video.");
+        res.status(200).send(videos);
+      });
 });
 
 //get videos by user
 router.get("/", VerifyToken, (req, res) => {
-  const { id_video, title, description } = req.query;
-  Video.find(
-    {
-      id_user: req.userId,
-      id_video: new RegExp(id_video),
-      title: new RegExp(title, "i"),
-      description: new RegExp(description, "i")
-    },
-    (err, docs) => {
-      if (err)
-        return res.status(500).send("There was a problem finding the video.");
+  const { id_cloudinary, title, description, _id } = req.query;
+  Video.find({
+    id_user: req.userId,
+    id_cloudinary: new RegExp(id_cloudinary),
+    title: new RegExp(title, "i"),
+    description: new RegExp(description, "i")
+  })
+    .populate("id_user", "name photo_profile")
+    .exec((err, docs) => {
+      if (err) return res.status(500).send(err);
       res.status(200).send(docs);
-    }
-  );
+    });
 });
 
-//update attribute video by id_video by user
+//update attribute video by _id by user
 router.put("/", VerifyToken, (req, res) => {
+  const { _id } = req.body;
   req.body.updated_at = new Date().toISOString();
-  const { id_video } = req.body;
-  if (!id_video) return res.sendStatus(400);
+  if (!_id) return res.sendStatus(400);
   Video.updateOne(
-    { id_user: req.userId, id_video },
+    { id_user: req.userId, _id },
     req.body,
     { new: true },
     (err, docs) => {
@@ -121,22 +133,29 @@ router.put("/", VerifyToken, (req, res) => {
     }
   );
 });
-//delete video by id_video by user
+//delete video by id_cloudinary by user
 router.delete("/", VerifyToken, (req, res) => {
-  const { id_video } = req.body;
-  if (!id_video) return res.sendStatus(400);
+  const { id_cloudinary, _id } = req.body;
+  if (!id_cloudinary || !_id) return res.sendStatus(400);
   cloudinary.v2.uploader.destroy(
-    id_video,
+    id_cloudinary,
     { resource_type: "video" },
     (err, rst) => {
       if (err)
         return res.status(500).send("There was a problem deleting the video");
     }
   );
-  Video.deleteOne({ id_user: req.userId, id_video }, (err, docs) => {
+
+  Video.findByIdAndDelete(_id, (err, docs) => {
     if (err)
       return res.status(500).send("There was a problem deleting the video");
-    res.status(200).send(docs);
+    Comment.deleteMany({ id_video: _id }, (err, docs) => {
+      if (err)
+        return res
+          .status(500)
+          .send("There was a problem deleting the comment(s)");
+      res.status(200).send("ok");
+    });
   });
 });
 

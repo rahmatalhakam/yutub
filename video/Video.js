@@ -1,23 +1,14 @@
 const mongoose = require("mongoose");
-const VideoSchema = new mongoose.Schema({
-  id_video: {
-    type: String,
-    required: true
-  },
-  id_user: {
-    type: String,
-    required: true
-  },
-  video_url: {
-    type: String,
-    required: true
-  },
+const Schema = mongoose.Schema;
+const VideoSchema = Schema({
   title: String,
   description: String,
   thumbnail: String,
-  // html_resource: String,
+  video_url: { type: String, required: true },
   created_at: { type: Date, default: Date.now },
-  updated_at: Date
+  updated_at: Date,
+  id_user: { type: Schema.Types.ObjectId, required: true, ref: "User" },
+  id_cloudinary: { type: String, required: true }
 });
 mongoose.model("Video", VideoSchema);
 mongoose.set("useFindAndModify", false);

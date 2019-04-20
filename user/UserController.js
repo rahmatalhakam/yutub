@@ -10,9 +10,10 @@ router.use(bodyParser.json());
 
 const cloudinary = require("cloudinary");
 var User = require("./User");
+var Comment = require("../comment/Comment");
+var Video = require("../video/Video");
 var config = require("../config");
 var VerifyToken = require("../auth/VerifyToken");
-
 cloudinary.config({
   cloud_name: config.cloud_name,
   api_key: config.api_key,
@@ -33,7 +34,7 @@ router.post("/", function(req, res) {
       password: hashedPassword,
       updated_at: Date.now()
     },
-    function(err, user) {
+    (err, user) => {
       if (err)
         return res
           .status(500)
@@ -50,7 +51,7 @@ router.post("/", function(req, res) {
 router.post("/login", function(req, res) {
   if (!req.body.email || !req.body.password)
     return res.status(400).send("Bad Request");
-  User.findOne({ email: req.body.email }, function(err, user) {
+  User.findOne({ email: req.body.email }, (err, user) => {
     if (err) return res.status(500).send("Error on the server.");
     if (!user) return res.status(404).send("No user found.");
 
@@ -76,13 +77,10 @@ router.get("/all", function(req, res) {
 });
 
 //get user by token
-router.get("/", VerifyToken, function(req, res, next) {
-  const { name, email } = req.query;
+router.get("/", VerifyToken, function(req, res) {
   User.find(
     {
-      _id: req.userId,
-      name: new RegExp(name, "i"),
-      email: new RegExp(email, "i")
+      _id: req.userId
     },
     { password: 0 },
     function(err, user) {
@@ -97,14 +95,17 @@ router.get("/", VerifyToken, function(req, res, next) {
 // UPDATES A SINGLE USER IN THE DATABASE
 router.put("/", VerifyToken, function(req, res) {
   req.body.updated_at = new Date().toISOString();
-  User.findByIdAndUpdate(req.userId, req.body, { new: true }, function(
-    err,
-    user
-  ) {
-    if (err)
-      return res.status(500).send("There was a problem updating the user.");
-    res.status(200).send(user);
-  });
+  if (!req.body.name) return res.sendStatus(400);
+  User.findByIdAndUpdate(
+    req.userId,
+    { name: req.body.name },
+    { new: true },
+    function(err, user) {
+      if (err)
+        return res.status(500).send("There was a problem updating the user.");
+      res.status(200).send(user);
+    }
+  );
 });
 
 //update photo profile
@@ -139,7 +140,17 @@ router.delete("/", VerifyToken, function(req, res) {
   User.findByIdAndDelete(req.userId, function(err, user) {
     if (err)
       return res.status(500).send("There was a problem deleting the user.");
-    res.status(200).send("User was deleted.");
+    Video.deleteMany({ id_user: req.userId }, (err, docs) => {
+      if (err)
+        return res.status(500).send("There was a problem deleting the video");
+      Comment.deleteMany({ id_user: req.userId }, (err, docs) => {
+        if (err)
+          return res
+            .status(500)
+            .send("There was a problem deleting the comment(s)");
+        res.status(200).send("ok");
+      });
+    });
   });
 });
 

@@ -12,4 +12,7 @@ app.use("/comments", CommentController);
 app.get("/", (req, res) => {
   res.send("yutub-api");
 });
+app.all("*", (req, res) => {
+  res.sendStatus(404);
+});
 module.exports = app;

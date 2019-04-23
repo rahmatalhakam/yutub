@@ -75,6 +75,7 @@ router.get("/all", (req, res) => {
       .exec((err, videos) => {
         if (err)
           return res.status(500).send("There was a problem finding the video.");
+        if (videos.length < 1) return res.status(404).send("No video found.");
         res.status(200).send(videos);
       });
   else if (id_user)
@@ -83,6 +84,7 @@ router.get("/all", (req, res) => {
       .exec((err, videos) => {
         if (err)
           return res.status(500).send("There was a problem finding the video.");
+        if (videos.length < 1) return res.sendStatus(204);
         res.status(200).send(videos);
       });
   else
@@ -95,6 +97,7 @@ router.get("/all", (req, res) => {
       .exec((err, videos) => {
         if (err)
           return res.status(500).send("There was a problem finding the video.");
+        if (videos.length < 1) return res.status(404).send("No video found.");
         res.status(200).send(videos);
       });
 });
@@ -111,6 +114,7 @@ router.get("/", VerifyToken, (req, res) => {
     .populate("id_user", "name photo_profile")
     .exec((err, docs) => {
       if (err) return res.status(500).send(err);
+      if (videos.length < 1) return res.status(404).send("No video found.");
       res.status(200).send(docs);
     });
 });
@@ -120,18 +124,14 @@ router.put("/", VerifyToken, (req, res) => {
   const { _id } = req.body;
   req.body.updated_at = new Date().toISOString();
   if (!_id) return res.sendStatus(400);
-  Video.updateOne(
-    { id_user: req.userId, _id },
-    req.body,
-    { new: true },
-    (err, docs) => {
-      if (err)
-        return res
-          .status(500)
-          .send("There was a problem updating the video data");
-      res.status(200).send(docs);
-    }
-  );
+  Video.updateOne({ id_user: req.userId, _id }, req.body, (err, docs) => {
+    if (err)
+      return res
+        .status(500)
+        .send("There was a problem updating the video data");
+    if (docs.nModified < 1) return res.status(404).send("No video found.");
+    res.status(200).send("Updated");
+  });
 });
 //delete video by id_cloudinary by user
 router.delete("/", VerifyToken, (req, res) => {
@@ -146,7 +146,7 @@ router.delete("/", VerifyToken, (req, res) => {
     }
   );
 
-  Video.findByIdAndDelete(_id, (err, docs) => {
+  Video.deleteOne({ _id, id_user: req.userId }, (err, docs) => {
     if (err)
       return res.status(500).send("There was a problem deleting the video");
     Comment.deleteMany({ id_video: _id }, (err, docs) => {
@@ -154,7 +154,7 @@ router.delete("/", VerifyToken, (req, res) => {
         return res
           .status(500)
           .send("There was a problem deleting the comment(s)");
-      res.status(200).send("ok");
+      res.status(200).send("Deleted.");
     });
   });
 });

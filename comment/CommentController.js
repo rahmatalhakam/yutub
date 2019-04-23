@@ -16,7 +16,7 @@ router.post("/", VerifyToken, (req, res) => {
       return res
         .status(500)
         .send("There was a problem adding the information to the database.");
-    res.status(200).send(comment);
+    res.sendStatus(201);
   });
 });
 
@@ -33,6 +33,7 @@ router.get("/", (req, res) => {
             .send(
               "There was a problem getting the information from the database."
             );
+        if (result.length < 1) return res.sendStatus(204);
         res.status(200).send(result);
       });
   } else {
@@ -45,6 +46,7 @@ router.get("/", (req, res) => {
             .send(
               "There was a problem getting the information from the database."
             );
+        if (result.length < 1) return res.sendStatus(204);
         res.status(200).send(result);
       });
   }

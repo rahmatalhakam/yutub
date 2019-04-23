@@ -14,18 +14,34 @@ var Comment = require("../comment/Comment");
 var Video = require("../video/Video");
 var config = require("../config");
 var VerifyToken = require("../auth/VerifyToken");
+// var VarifyImage = require("./VerifyImage");
 cloudinary.config({
   cloud_name: config.cloud_name,
   api_key: config.api_key,
   api_secret: config.api_secret
 });
 
-const parser = multer({ dest: "storage/" });
+const parser = multer({
+  dest: "storage/"
+});
+
+// fileFilter: function(req, file, cb) {
+//   let ext = path.extname(file.originalname);
+//   if (ext !== ".jpeg" && ext !== ".png" && ext !== ".jpg") {
+//     req.fileValidationError = "Forbidden extension";
+//     return cb(null, false, req.fileValidationError);
+//   }
+//   cb(null, true);
+// }
 
 // create new user
 router.post("/", function(req, res) {
   if (!req.body.name || !req.body.email || !req.body.password)
     return res.status(400).send("Bad Request");
+  if (req.body.password.length < 6)
+    return res.status(422).send("Password must be at least 6 characters");
+
+  req.body.email = req.body.email.replace(/\s/g, "");
   var hashedPassword = bcrypt.hashSync(req.body.password, 8);
   User.create(
     {
@@ -35,14 +51,11 @@ router.post("/", function(req, res) {
       updated_at: Date.now()
     },
     (err, user) => {
-      if (err)
-        return res
-          .status(500)
-          .send("There was a problem adding the information to the database.");
+      if (err) return res.sendStatus(409);
       var token = jwt.sign({ id: user._id }, config.secret, {
         expiresIn: 86400 // expires in 24 hours
       });
-      res.status(200).send("success");
+      res.sendStatus(201);
     }
   );
 });
@@ -62,7 +75,6 @@ router.post("/login", function(req, res) {
     var token = jwt.sign({ id: user._id }, config.secret, {
       expiresIn: 86400 // expires in 24 hours
     });
-
     res.status(200).send({ auth: true, token: token });
   });
 });
@@ -72,6 +84,7 @@ router.get("/all", function(req, res) {
   User.find(req.query, { password: 0 }, function(err, users) {
     if (err)
       return res.status(500).send("There was a problem finding the users.");
+    if (users.length < 1) return res.sendStatus(204);
     res.status(200).send(users);
   });
 });
@@ -94,22 +107,26 @@ router.get("/", VerifyToken, function(req, res) {
 
 // UPDATES A SINGLE USER IN THE DATABASE
 router.put("/", VerifyToken, function(req, res) {
+  if (!req.body.password && !req.body.name) return res.sendStatus(400);
+  if (req.body.email || req.body.created_at || req.body.updated_at)
+    return res.sendStatus(422);
+  if (req.body.password) {
+    if (req.body.password.length < 6)
+      return res.status(422).send("Password must be at least 6 characters");
+    req.body.password = bcrypt.hashSync(req.body.password, 8);
+  }
   req.body.updated_at = new Date().toISOString();
-  if (!req.body.name) return res.sendStatus(400);
-  User.findByIdAndUpdate(
-    req.userId,
-    { name: req.body.name },
-    { new: true },
-    function(err, user) {
-      if (err)
-        return res.status(500).send("There was a problem updating the user.");
-      res.status(200).send(user);
-    }
-  );
+  User.findByIdAndUpdate(req.userId, req.body, { new: true }, (err, user) => {
+    if (err) return res.status(500).send(err);
+    res.status(200).send(user);
+  });
 });
 
 //update photo profile
 router.put("/attachment", [VerifyToken, parser.single("image")], (req, res) => {
+  // console.log(req.fileValidationError, req.file.path);
+  // if (req.fileValidationError)
+  //   return res.status(403).send(req.fileValidationError);
   cloudinary.v2.uploader.upload(req.file.path, (err, result) => {
     fs.unlink(req.file.path, function(err) {
       if (err) throw err;
@@ -148,7 +165,7 @@ router.delete("/", VerifyToken, function(req, res) {
           return res
             .status(500)
             .send("There was a problem deleting the comment(s)");
-        res.status(200).send("ok");
+        res.sendStatus(200);
       });
     });
   });

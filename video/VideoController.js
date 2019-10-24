@@ -114,7 +114,7 @@ router.get("/", VerifyToken, (req, res) => {
     .populate("id_user", "name photo_profile")
     .exec((err, docs) => {
       if (err) return res.status(500).send(err);
-      if (videos.length < 1) return res.status(404).send("No video found.");
+      if (docs.length < 1) return res.status(404).send("No video found.");
       res.status(200).send(docs);
     });
 });
